@@ -98,7 +98,146 @@ def create_class_column_5lastgames(match_data, df, name):
         i = i + 1
         print(i)
     df['5Last_Games'+name] = scores
+def ave_match_in_week(df):
+    dfDates=pd.DataFrame(columns=['team_id','early_date','late_date','history_games','average_game_per_week'])
+    teams=[]
+    index=0
+    for a in df.itertuples():
+        if a.home_team in teams:
+            early = dfDates.loc[dfDates['team_id']==a.home_team]['early_date']
+            # print(early.index[0])
+            index_early = int(early.index[0])
+            date_early_df = datetime.datetime(int(early[index_early][0:4]), int(early[index_early][5:7]), int(early[index_early][8:10]))
+            late = dfDates.loc[dfDates['team_id']==a.home_team]['late_date']
+            index_late = int(late.index[0])
+            # print(type(a))
+            date_late_df = datetime.datetime(int(late[index_late][0:4]), int(late[index_late][5:7]), int(late[index_late][8:10]))
+            current_date_iter =datetime.datetime(int(a.date[0:4]), int(a.date[5:7]), int(a.date[8:10]))
+            if current_date_iter > date_late_df:
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'late_date',current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
+                games= dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() +1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'history_games',games)
+            elif current_date_iter < date_early_df:
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'early_date',current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
+                games= dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() +1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'history_games',games)
+            else:
+                games= dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() +1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'history_games',games)
+        else:
+            new_row = {'team_id': a.home_team, 'early_date': a.date, 'late_date': a.date, 'history_games': 1}
+            dfDates=dfDates.append(new_row,ignore_index=True)
+            teams.append(a.home_team)
+        if a.away_team in teams:
+            early = dfDates.loc[dfDates['team_id'] == a.away_team]['early_date']
+            # print(early.index[0])
+            index_early = int(early.index[0])
+            date_early_df = datetime.datetime(int(early[index_early][0:4]), int(early[index_early][5:7]),
+                                              int(early[index_early][8:10]))
+            late = dfDates.loc[dfDates['team_id'] == a.away_team]['late_date']
+            index_late = int(late.index[0])
+            date_late_df = datetime.datetime(int(late[index_late][0:4]), int(late[index_late][5:7]),
+                                             int(late[index_late][8:10]))
+            current_date_iter = datetime.datetime(int(a.date[0:4]), int(a.date[5:7]), int(a.date[8:10]))
+            if current_date_iter > date_late_df:
+                dfDates._set_value(index, 'late_date', current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
+                games= dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() +1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(),'history_games',games)
+            elif current_date_iter < date_early_df:
+                dfDates._set_value(index, 'early_date',current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
+                games= dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() +1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(),'history_games',games)
+            else:
+                games= dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() +1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(),'history_games',games)
+        else:
+            new_row = {'team_id': a.away_team, 'early_date': a.date, 'late_date': a.date, 'history_games': 1}
+            dfDates = dfDates.append(new_row, ignore_index=True)
+            teams.append(a.away_team)
+    for row in dfDates.itertuples():
+        early_date = datetime.datetime(int(row.early_date[0:4]), int(row.early_date[5:7]), int(row.early_date[8:10]))
+        late_date = datetime.datetime(int(row.late_date[0:4]), int(row.late_date[5:7]), int(row.late_date[8:10]))
+        delta = late_date - early_date
+        if delta.days ==0:
+            ans = 'NaN'
+        else:
+            number_of_game_history =  (dfDates[dfDates['team_id'] == row.team_id]['history_games'].item())
+            x =delta.days / number_of_game_history
+            ans= 7/x
+        # print(ans)
+        dfDates._set_value(dfDates[dfDates['team_id'] == row.team_id].index.item(), 'average_game_per_week', str(ans))
+    dfDatesFinal=pd.DataFrame(columns=['team_id','average_game_per_week'])
+    for row in dfDates.itertuples():
+        new_row = {'team_id': row.team_id, 'average_game_per_week': row.average_game_per_week}
+        dfDatesFinal = dfDatesFinal.append(new_row, ignore_index=True)
 
+    return dfDatesFinal
+
+def get_last_matches(matches, date, team, x=10):
+    ''' Get the last x matches of a given team. '''
+    # Filter team matches from matches
+    team_matches = matches[(matches['home_team_api_id'] == team) | (matches['away_team_api_id'] == team)]
+    # Filter x last matches from team matches
+    last_matches = team_matches[team_matches.date < date].sort_values(by='date', ascending=False).iloc[0:x, :]
+
+    # Return last matches
+    return last_matches
+
+def get_average_age_team(df_match,df_players):
+    avaragedf=pd.DataFrame(columns=['team_id','average_age'])
+    teams=[]
+    teams=[]
+
+    players_fields = ['home_player_1', 'home_player_2', 'home_player_3', "home_player_4", "home_player_5",
+                      "home_player_6", "home_player_7", "home_player_8", "home_player_9", "home_player_10",
+                      "home_player_11", "away_player_1", "away_player_2", "away_player_3", "away_player_4",
+                      "away_player_5", "away_player_6", "away_player_7", "away_player_8", "away_player_9",
+                      "away_player_10", "away_player_11"]
+    for row in df_match.itertuples():
+        players=[]
+        if int(row.home_team_api_id) not in teams:
+            teams.append(int(row.home_team_api_id))
+            matches_of_home_team = get_last_matches(df_match, str(datetime.datetime.now()),row.home_team_api_id,x=10)
+            # matches_of_home_team = get_last_matches(df_match, df_match['date'][10001],row.home_team_api_id,x=10)
+            for player in players_fields:
+                    i=0
+                    curr_players = matches_of_home_team[player].tolist()
+                    while i < len(curr_players):
+                        if int(curr_players[i]) not in players:
+                            players.append(int(curr_players[i]))
+                        i=i+1
+            curr_team=row.home_team_api_id
+        elif int(row.away_team_api_id) not in teams:
+            teams.append(int(row.away_team_api_id))
+            matches_of_away_team = get_last_matches(df_match, str(datetime.datetime.now()),row.away_team_api_id,x=10)
+            for player in players_fields:
+                    i=0
+                    curr_players = matches_of_home_team[player].tolist()
+                    while i < len(curr_players):
+                        if int(curr_players[i]) not in players:
+                            players.append(int(curr_players[i]))
+                        i=i+1
+            curr_team = row.away_team_api_id
+        sum=0
+        while i < len(players):
+            birth_date = df_players[df_players['player_api_id'] == players[i]]['birthday'].item()
+            delta = datetime.datetime.now() - datetime.datetime(int(birth_date[0:4]), int(birth_date[5:7]), int(birth_date[8:10]))
+            sum=sum+(delta.days/365)
+            i=i+1
+        if len(players)>0:
+            average = sum/len(players)
+            new_row = {'team_id':int(curr_team), 'average_age': average}
+            avaragedf=avaragedf.append(new_row,ignore_index=True)
+    return avaragedf
+
+def add_values(df,df_avg_week,df_avg_age):
+    for row in df_avg_week.itertuples():
+        df.loc[df['home_team_api_id'] == row.team_id, 'home_team_avg_game_week'] = row.average_game_per_week
+        df.loc[df['away_team_api_id'] == row.team_id, 'away_team_avg_game_week'] = row.average_game_per_week
+    for row in df_avg_age.itertuples():
+        df.loc[df['home_team_api_id'] == row.team_id, 'home_team_avg_age'] = row.average_age
+        df.loc[df['away_team_api_id'] == row.team_id, 'away_team_avg_age'] = row.average_age
+    return(df)
 
 def create_class_5lastgames_between_teams(match_data, df, name):
     scores = [];
