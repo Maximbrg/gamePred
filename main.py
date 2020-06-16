@@ -69,7 +69,7 @@ def get_last_matches_against_eachother(matches, date, home_team, away_team, x=10
     return last_matches
 
 
-path = "C:\\Users\\pc\\Desktop\\"  # Insert path here
+path = "C:\\Users\\shira\\Downloads\\63_589_bundle_archive\\"  # Insert path here
 database = path + 'database.sqlite'
 conn = sqlite3.connect(database)
 
