@@ -1,8 +1,17 @@
 ## Fetching data
 # Connecting to database
+import itertools
 import sqlite3
 import pandas as pd
 import datetime
+
+from sklearn import svm
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -149,22 +158,97 @@ rows = ["country_id", "league_id", "season", "stage", "date", "match_api_id", "h
         "away_player_7", "away_player_8", "away_player_9", "away_player_10", "away_player_11"]
 
 match_data.dropna(subset=rows, inplace=True)
+# d_temp = {'match_id': match_data['match_api_id'].values}
+# df = pd.DataFrame(data=d_temp)
+# df.insert(1, "home_team_api_id", match_data['home_team_api_id'].values)
+# df.insert(2, "away_team_api_id", match_data['away_team_api_id'].values)
+# df.insert(3, "home_team_goal", match_data['home_team_goal'].values)
+# df.insert(4, "away_team_goal", match_data['away_team_goal'].values)
+#
+# df = pd.read_csv("aaa.csv")
+# create_class_column_5lastgames(match_data, df, 'away_team_api_id')
+# create_class_column_5lastgames(match_data, df, 'home_team_api_id')
+#
+# create_class_5lastgames_between_teams(match_data, df, 'away_team_api_id')
+# create_class_5lastgames_between_teams(match_data, df, 'home_team_api_id')
+
+#df.to_csv("final.csv", index=False)
+
+df = pd.read_csv("final.csv")
+d_temp = {'5Last_Gamesaway_team_api_id': [], "5Last_Gameshome_team_api_id":[], "last_meetings_for away_team_api_id": [], "five_last_meetings_for home_team_api_id": [],
+          'avg_performane_of_main_home_players': [],'avg_performane_of_all_home_players': [],
+          'avg_performane_of_main_away_players': [],"avg_performane_of_all_away_players": [], "class": []}
 d_temp = {'match_id': match_data['match_api_id'].values}
-df = pd.DataFrame(data=d_temp)
-df.insert(1, "home_team_api_id", match_data['home_team_api_id'].values)
-df.insert(2, "away_team_api_id", match_data['away_team_api_id'].values)
-df.insert(3, "home_team_goal", match_data['home_team_goal'].values)
-df.insert(4, "away_team_goal", match_data['away_team_goal'].values)
 
-df = pd.read_csv("aaa.csv")
-create_class_column_5lastgames(match_data, df, 'away_team_api_id')
-create_class_column_5lastgames(match_data, df, 'home_team_api_id')
-
-create_class_5lastgames_between_teams(match_data, df, 'away_team_api_id')
-create_class_5lastgames_between_teams(match_data, df, 'home_team_api_id')
-
-df.to_csv("final.csv", index=False)
+df_Trn = pd.DataFrame(data=d_temp)
+df_Tes = pd.DataFrame(data=d_temp)
+print("Start")
+match_data2 = match_data[['match_api_id', 'season']]
+df = pd.merge(df, match_data2, how='left', on=['match_api_id'])
 
 
+train = df[~df.season.isin(['2015/2016'])]
+test = df[df.season.isin(['2015/2016'])]
 
+X_tr = train[['5Last_Gamesaway_team_api_id','5Last_Gameshome_team_api_id',
+               'five_last_meetings_for away_team_api_id',
+               'five_last_meetings_for home_team_api_id',
+               'avg_performane_of_main_home_players',
+               'avg_performane_of_all_home_players',
+               'avg_performane_of_main_away_players',
+               'avg_performane_of_all_away_players']]
+y_tr = train[['class']]
 
+X_test = test[['5Last_Gamesaway_team_api_id','5Last_Gameshome_team_api_id',
+               'five_last_meetings_for away_team_api_id',
+               'five_last_meetings_for home_team_api_id',
+               'avg_performane_of_main_home_players',
+               'avg_performane_of_all_home_players',
+               'avg_performane_of_main_away_players',
+               'avg_performane_of_all_away_players']]
+y_test = test[['class']]
+# y_pred = SVM.predict(test_x)
+#
+# print(confusion_matrix(y_test, y_pred))
+# print(classification_report(y_test,y_pred))
+# print("----------------------------------------------------")
+# svclassifier = SVC(kernel='poly', degree=4)
+# # print("start")
+# # svclassifier.fit(X, y.values.ravel())
+# # print("end")
+# # y_pred = svclassifier.predict(test_x)
+# # print(confusion_matrix(y_test, y_pred))
+# # print(classification_report(y_test, y_pred))
+print("----------------------RF----------------------------")
+RF = RandomForestClassifier(n_estimators=100, max_depth=2, random_state=0)
+RF.fit(X_tr, y_tr.values.ravel())
+y_pred = RF.predict(X_test)
+print(accuracy_score(y_pred, y_test))
+print(classification_report(y_test, y_pred))
+print("----------------------KNN----------------------------")
+KNN_model = KNeighborsClassifier(n_neighbors=3)
+KNN_model.fit(X_tr, y_tr.values.ravel())
+KNN_prediction = KNN_model.predict(X_test)
+print(accuracy_score(KNN_prediction, y_test))
+print(classification_report(KNN_prediction, y_test))
+
+print("------------------LR--------------------------------")
+LR = LogisticRegression(random_state=0, solver='lbfgs', multi_class='multinomial').fit(X_tr, y_tr.values.ravel())
+LR.predict(X_test)
+print(accuracy_score(y_pred, y_test))
+print(classification_report(y_test, y_pred))
+
+print("---------------------SVM----------------------------")
+SVM = svm.SVC(decision_function_shape="ovo").fit(X_tr, y_tr.values.ravel())
+SVM.predict(X_test)
+print(accuracy_score(y_pred, y_test))
+print(classification_report(y_test, y_pred))
+# print("---------------------RF----------------------------")
+# RF = RandomForestClassifier(n_estimators=1000, max_depth=10, random_state=0).fit(X_tr, y_tr.values.ravel())
+# RF.predict(X_test)
+# print(round(RF.score(X_test, y_test), 4))
+# print("--------------------NN------------------------------")
+# NN = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(150, 10), random_state=1, max_iter=10000).fit(X_tr, y_tr.values.ravel())
+# NN.predict(X_test)
+# round(NN.score(X_test, y_test), 4)
+# print("----------------------------------------------------")
