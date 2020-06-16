@@ -25,11 +25,7 @@ def get_match_label(match):
             results.insert(i, "Draw")
         if home_goals < away_goals:
             results.insert(i, "Defeat")
-    print(results)
-    match['labellabel'] = results
-    print(match)
-    # Return label
-    match.to_csv("aaa.csv", index=False)
+    match['class'] = results
     return label
 
 
@@ -69,6 +65,60 @@ def get_last_matches_against_eachother(matches, date, home_team, away_team, x=10
     return last_matches
 
 
+def create_class_column_5lastgames(match_data, df, name):
+    scores = [];
+    i=0
+    for x in df['match_id']:
+        match_info = match_data.loc[match_data.match_api_id == x]
+        matches_of_team = get_last_matches(match_data, match_info['date'].values[0],
+                                           match_info[name].values[0], x=5)
+        home_team = match_info[name].values[0]
+        score_number = 0
+        for y in matches_of_team['match_api_id']:
+            match_info_results = df.loc[df.match_id == y]
+            result = match_info_results['class'].values[0]
+            if match_info_results['away_team_api_id'].values[0] == home_team:
+                if result == "Defeat":
+                    score_number = score_number + 3
+            else:
+                if result == "Win":
+                    score_number = score_number + 3
+            if result == "Draw":
+                score_number = score_number + 1
+        scores.insert(i, score_number / 15)
+        i = i + 1
+        print(i)
+    df['5Last_Games'+name] = scores
+
+
+def create_class_5lastgames_between_teams(match_data, df, name):
+    scores = [];
+    i=0
+    for x in df['match_id']:
+        match_info = match_data.loc[match_data.match_api_id == x]
+        matches_of_team = get_last_matches_against_eachother(match_data, match_info['date'].values[0],
+                                                             match_info['home_team_api_id'].values[0],
+                                                             match_info['away_team_api_id'].values[0],
+                                                             x=5)
+        home_team = match_info[name].values[0]
+        score_number = 0
+        for y in matches_of_team['match_api_id']:
+            match_info_results = df.loc[df.match_id == y]
+            result = match_info_results['class'].values[0]
+            if match_info_results['away_team_api_id'].values[0] == home_team:
+                if result == "Defeat":
+                    score_number = score_number + 3
+            else:
+                if result == "Win":
+                    score_number = score_number + 3
+            if result == "Draw":
+                score_number = score_number + 1
+        scores.insert(i, score_number / 15)
+        i = i + 1
+        print(i)
+    df['five_last_meetings_for '+name] = scores
+
+
 path = "C:\\Users\\pc\\Desktop\\"  # Insert path here
 database = path + 'database.sqlite'
 conn = sqlite3.connect(database)
@@ -105,10 +155,16 @@ df.insert(1, "home_team_api_id", match_data['home_team_api_id'].values)
 df.insert(2, "away_team_api_id", match_data['away_team_api_id'].values)
 df.insert(3, "home_team_goal", match_data['home_team_goal'].values)
 df.insert(4, "away_team_goal", match_data['away_team_goal'].values)
-# print(match_data[:][10001])
-print(get_match_label(df))
-# History
-# print(get_last_matches(match_data, match_data['date'][10001],9987,x=5))
 
-print(get_last_matches_against_eachother(match_data, match_data['date'][10001], match_data['home_team_api_id'][10001],
-                                         match_data['away_team_api_id'][10001]))
+df = pd.read_csv("aaa.csv")
+create_class_column_5lastgames(match_data, df, 'away_team_api_id')
+create_class_column_5lastgames(match_data, df, 'home_team_api_id')
+
+create_class_5lastgames_between_teams(match_data, df, 'away_team_api_id')
+create_class_5lastgames_between_teams(match_data, df, 'home_team_api_id')
+
+df.to_csv("final.csv", index=False)
+
+
+
+
