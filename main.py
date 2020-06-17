@@ -367,7 +367,6 @@ df = pd.merge(df, match_data2, how='left', on=['match_api_id'])
 train = df[~df.season.isin(['2015/2016'])]
 test = df[df.season.isin(['2015/2016'])]
 
-df.apply(lambda x: means[x] if df.x == (x.Vals) else x.Vals, axis=1)
 
 X_tr = train[[
     '5Last_Gamesaway_team_api_id',
