@@ -367,6 +367,8 @@ df = pd.merge(df, match_data2, how='left', on=['match_api_id'])
 train = df[~df.season.isin(['2015/2016'])]
 test = df[df.season.isin(['2015/2016'])]
 
+df.apply(lambda x: means[x] if df.x == (x.Vals) else x.Vals, axis=1)
+
 X_tr = train[[
     '5Last_Gamesaway_team_api_id',
               '5Last_Gameshome_team_api_id',
@@ -404,8 +406,6 @@ X_test = test[[
               ]]
 y_test = test[['class']]
 
-fig = plt.figure()
-
 
 values = []
 print(df.groupby('class')['match_api_id'].nunique())
@@ -422,6 +422,8 @@ print(accuracy_score(y_pred, y_test))
 print(classification_report(y_test, y_pred))
 
 plot_confusion_matrix(RF, X_test, y_test)
+plt.title("RandomForestClassifier")
+
 
 print("----------------------KNeighborsClassifier----------------------------")
 KNN_model = KNeighborsClassifier(n_neighbors=1100)
@@ -432,6 +434,7 @@ print(accuracy_score(KNN_prediction, y_test))
 print(classification_report(KNN_prediction, y_test))
 
 plot_confusion_matrix(KNN_model, X_test, y_test)
+plt.title("KNeighborsClassifier")
 
 
 print("---------------------GaussianNB----------------------------")
@@ -440,7 +443,9 @@ y_pred = gnb.fit(X_tr, y_tr.values.ravel()).predict(X_test)
 values.insert(3, accuracy_score(y_pred, y_test))
 print(accuracy_score(y_pred, y_test))
 print(classification_report(y_test, y_pred))
+
 plot_confusion_matrix(gnb, X_test, y_test)
+plt.title("GaussianNB")
 
 print("---------------------LogisticRegression----------------------------")
 clf = LogisticRegression(random_state=5).fit(X_tr, y_tr.values.ravel())
@@ -448,7 +453,10 @@ y_pred = clf.predict(X_test)
 values.insert(4, accuracy_score(y_pred, y_test))
 print(accuracy_score(y_pred, y_test))
 print(classification_report(y_test, y_pred))
+
+
 plot_confusion_matrix(clf, X_test, y_test)
+plt.title("LogisticRegression")
 
 print("---------------------AdaBoostClassifier----------------------------")
 clf = AdaBoostClassifier(n_estimators=100, random_state=5)
@@ -456,14 +464,15 @@ y_pred = clf.fit(X_tr, y_tr.values.ravel()).predict(X_test)
 values.insert(5, accuracy_score(y_pred, y_test))
 print(accuracy_score(y_pred, y_test))
 print(classification_report(y_test, y_pred))
-plot_confusion_matrix(clf, X_test, y_test )
+
+plot_confusion_matrix(clf, X_test, y_test)
+plt.title("AdaBoostClassifier")
 
 
 # Graphs
 
 names = ['Apriori','RFC', 'KNN', 'NB', 'LR','AdaBoostC']
 print(values)
-# plt.figure(figsize=(15, 5))
 
 plt.subplot(133)
 plt.plot(names, values)
