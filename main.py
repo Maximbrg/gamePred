@@ -26,7 +26,7 @@ def get_match_label(match):
         home_goals = match['home_team_goal'].values[i]
         away_goals = match['away_team_goal'].values[i]
         label = pd.DataFrame()
-        label.insert(0, 'match_id', match['match_id'])
+        label.insert(0, 'match_api_id', match['match_api_id'])
         # Identify match label
         if home_goals > away_goals:
             results.insert(i, "Win")
@@ -158,19 +158,23 @@ rows = ["country_id", "league_id", "season", "stage", "date", "match_api_id", "h
         "away_player_7", "away_player_8", "away_player_9", "away_player_10", "away_player_11"]
 
 match_data.dropna(subset=rows, inplace=True)
-# d_temp = {'match_id': match_data['match_api_id'].values}
-# df = pd.DataFrame(data=d_temp)
-# df.insert(1, "home_team_api_id", match_data['home_team_api_id'].values)
-# df.insert(2, "away_team_api_id", match_data['away_team_api_id'].values)
-# df.insert(3, "home_team_goal", match_data['home_team_goal'].values)
-# df.insert(4, "away_team_goal", match_data['away_team_goal'].values)
-#
-# df = pd.read_csv("aaa.csv")
-# create_class_column_5lastgames(match_data, df, 'away_team_api_id')
-# create_class_column_5lastgames(match_data, df, 'home_team_api_id')
-#
-# create_class_5lastgames_between_teams(match_data, df, 'away_team_api_id')
-# create_class_5lastgames_between_teams(match_data, df, 'home_team_api_id')
+d_temp = {'match_api_id': match_data['match_api_id'].values}
+df = pd.DataFrame(data=d_temp)
+
+df.insert(1, "home_team_api_id", match_data['home_team_api_id'].values)
+df.insert(2, "away_team_api_id", match_data['away_team_api_id'].values)
+df.insert(3, "home_team_goal", match_data['home_team_goal'].values)
+df.insert(4, "away_team_goal", match_data['away_team_goal'].values)
+
+# Creates target class Win/Defeat/Draw
+get_match_label(df)
+
+# Adding features
+create_class_column_5lastgames(match_data, df, 'away_team_api_id')
+create_class_column_5lastgames(match_data, df, 'home_team_api_id')
+
+create_class_5lastgames_between_teams(match_data, df, 'away_team_api_id')
+create_class_5lastgames_between_teams(match_data, df, 'home_team_api_id')
 
 #df.to_csv("final.csv", index=False)
 
