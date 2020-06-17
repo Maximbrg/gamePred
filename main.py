@@ -4,14 +4,26 @@ import itertools
 import sqlite3
 import pandas as pd
 import datetime
+import warnings
+import sklearn.exceptions
+warnings.filterwarnings("ignore", category=sklearn.exceptions.UndefinedMetricWarning)
 
+from sklearn.metrics import f1_score
 from sklearn import svm
+from sklearn.metrics import plot_confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import plot_precision_recall_curve
+import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -76,7 +88,7 @@ def get_last_matches_against_eachother(matches, date, home_team, away_team, x=10
 
 def create_class_column_5lastgames(match_data, df, name):
     scores = [];
-    i=0
+    i = 0
     for x in df['match_id']:
         match_info = match_data.loc[match_data.match_api_id == x]
         matches_of_team = get_last_matches(match_data, match_info['date'].values[0],
@@ -97,36 +109,42 @@ def create_class_column_5lastgames(match_data, df, name):
         scores.insert(i, score_number / 15)
         i = i + 1
         print(i)
-    df['5Last_Games'+name] = scores
+    df['5Last_Games' + name] = scores
+
+
 def ave_match_in_week(df):
-    dfDates=pd.DataFrame(columns=['team_id','early_date','late_date','history_games','average_game_per_week'])
-    teams=[]
-    index=0
+    dfDates = pd.DataFrame(columns=['team_id', 'early_date', 'late_date', 'history_games', 'average_game_per_week'])
+    teams = []
+    index = 0
     for a in df.itertuples():
         if a.home_team in teams:
-            early = dfDates.loc[dfDates['team_id']==a.home_team]['early_date']
+            early = dfDates.loc[dfDates['team_id'] == a.home_team]['early_date']
             # print(early.index[0])
             index_early = int(early.index[0])
-            date_early_df = datetime.datetime(int(early[index_early][0:4]), int(early[index_early][5:7]), int(early[index_early][8:10]))
-            late = dfDates.loc[dfDates['team_id']==a.home_team]['late_date']
+            date_early_df = datetime.datetime(int(early[index_early][0:4]), int(early[index_early][5:7]),
+                                              int(early[index_early][8:10]))
+            late = dfDates.loc[dfDates['team_id'] == a.home_team]['late_date']
             index_late = int(late.index[0])
             # print(type(a))
-            date_late_df = datetime.datetime(int(late[index_late][0:4]), int(late[index_late][5:7]), int(late[index_late][8:10]))
-            current_date_iter =datetime.datetime(int(a.date[0:4]), int(a.date[5:7]), int(a.date[8:10]))
+            date_late_df = datetime.datetime(int(late[index_late][0:4]), int(late[index_late][5:7]),
+                                             int(late[index_late][8:10]))
+            current_date_iter = datetime.datetime(int(a.date[0:4]), int(a.date[5:7]), int(a.date[8:10]))
             if current_date_iter > date_late_df:
-                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'late_date',current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
-                games= dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() +1
-                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'history_games',games)
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(), 'late_date',
+                                   current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
+                games = dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() + 1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(), 'history_games', games)
             elif current_date_iter < date_early_df:
-                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'early_date',current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
-                games= dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() +1
-                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'history_games',games)
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(), 'early_date',
+                                   current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
+                games = dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() + 1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(), 'history_games', games)
             else:
-                games= dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() +1
-                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(),'history_games',games)
+                games = dfDates[dfDates['team_id'] == a.home_team]['history_games'].item() + 1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.home_team].index.item(), 'history_games', games)
         else:
             new_row = {'team_id': a.home_team, 'early_date': a.date, 'late_date': a.date, 'history_games': 1}
-            dfDates=dfDates.append(new_row,ignore_index=True)
+            dfDates = dfDates.append(new_row, ignore_index=True)
             teams.append(a.home_team)
         if a.away_team in teams:
             early = dfDates.loc[dfDates['team_id'] == a.away_team]['early_date']
@@ -141,15 +159,15 @@ def ave_match_in_week(df):
             current_date_iter = datetime.datetime(int(a.date[0:4]), int(a.date[5:7]), int(a.date[8:10]))
             if current_date_iter > date_late_df:
                 dfDates._set_value(index, 'late_date', current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
-                games= dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() +1
-                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(),'history_games',games)
+                games = dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() + 1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(), 'history_games', games)
             elif current_date_iter < date_early_df:
-                dfDates._set_value(index, 'early_date',current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
-                games= dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() +1
-                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(),'history_games',games)
+                dfDates._set_value(index, 'early_date', current_date_iter.strftime("%Y-%m-%d %H:%M:%S"))
+                games = dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() + 1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(), 'history_games', games)
             else:
-                games= dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() +1
-                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(),'history_games',games)
+                games = dfDates[dfDates['team_id'] == a.away_team]['history_games'].item() + 1
+                dfDates._set_value(dfDates[dfDates['team_id'] == a.away_team].index.item(), 'history_games', games)
         else:
             new_row = {'team_id': a.away_team, 'early_date': a.date, 'late_date': a.date, 'history_games': 1}
             dfDates = dfDates.append(new_row, ignore_index=True)
@@ -158,20 +176,21 @@ def ave_match_in_week(df):
         early_date = datetime.datetime(int(row.early_date[0:4]), int(row.early_date[5:7]), int(row.early_date[8:10]))
         late_date = datetime.datetime(int(row.late_date[0:4]), int(row.late_date[5:7]), int(row.late_date[8:10]))
         delta = late_date - early_date
-        if delta.days ==0:
+        if delta.days == 0:
             ans = 'NaN'
         else:
-            number_of_game_history =  (dfDates[dfDates['team_id'] == row.team_id]['history_games'].item())
-            x =delta.days / number_of_game_history
-            ans= 7/x
+            number_of_game_history = (dfDates[dfDates['team_id'] == row.team_id]['history_games'].item())
+            x = delta.days / number_of_game_history
+            ans = 7 / x
         # print(ans)
         dfDates._set_value(dfDates[dfDates['team_id'] == row.team_id].index.item(), 'average_game_per_week', str(ans))
-    dfDatesFinal=pd.DataFrame(columns=['team_id','average_game_per_week'])
+    dfDatesFinal = pd.DataFrame(columns=['team_id', 'average_game_per_week'])
     for row in dfDates.itertuples():
         new_row = {'team_id': row.team_id, 'average_game_per_week': row.average_game_per_week}
         dfDatesFinal = dfDatesFinal.append(new_row, ignore_index=True)
 
     return dfDatesFinal
+
 
 def get_last_matches(matches, date, team, x=10):
     ''' Get the last x matches of a given team. '''
@@ -183,10 +202,11 @@ def get_last_matches(matches, date, team, x=10):
     # Return last matches
     return last_matches
 
-def get_average_age_team(df_match,df_players):
-    avaragedf=pd.DataFrame(columns=['team_id','average_age'])
-    teams=[]
-    teams=[]
+
+def get_average_age_team(df_match, df_players):
+    avaragedf = pd.DataFrame(columns=['team_id', 'average_age'])
+    teams = []
+    teams = []
 
     players_fields = ['home_player_1', 'home_player_2', 'home_player_3', "home_player_4", "home_player_5",
                       "home_player_6", "home_player_7", "home_player_8", "home_player_9", "home_player_10",
@@ -194,54 +214,57 @@ def get_average_age_team(df_match,df_players):
                       "away_player_5", "away_player_6", "away_player_7", "away_player_8", "away_player_9",
                       "away_player_10", "away_player_11"]
     for row in df_match.itertuples():
-        players=[]
+        players = []
         if int(row.home_team_api_id) not in teams:
             teams.append(int(row.home_team_api_id))
-            matches_of_home_team = get_last_matches(df_match, str(datetime.datetime.now()),row.home_team_api_id,x=10)
+            matches_of_home_team = get_last_matches(df_match, str(datetime.datetime.now()), row.home_team_api_id, x=10)
             # matches_of_home_team = get_last_matches(df_match, df_match['date'][10001],row.home_team_api_id,x=10)
             for player in players_fields:
-                    i=0
-                    curr_players = matches_of_home_team[player].tolist()
-                    while i < len(curr_players):
-                        if int(curr_players[i]) not in players:
-                            players.append(int(curr_players[i]))
-                        i=i+1
-            curr_team=row.home_team_api_id
+                i = 0
+                curr_players = matches_of_home_team[player].tolist()
+                while i < len(curr_players):
+                    if int(curr_players[i]) not in players:
+                        players.append(int(curr_players[i]))
+                    i = i + 1
+            curr_team = row.home_team_api_id
         elif int(row.away_team_api_id) not in teams:
             teams.append(int(row.away_team_api_id))
-            matches_of_away_team = get_last_matches(df_match, str(datetime.datetime.now()),row.away_team_api_id,x=10)
+            matches_of_away_team = get_last_matches(df_match, str(datetime.datetime.now()), row.away_team_api_id, x=10)
             for player in players_fields:
-                    i=0
-                    curr_players = matches_of_home_team[player].tolist()
-                    while i < len(curr_players):
-                        if int(curr_players[i]) not in players:
-                            players.append(int(curr_players[i]))
-                        i=i+1
+                i = 0
+                curr_players = matches_of_home_team[player].tolist()
+                while i < len(curr_players):
+                    if int(curr_players[i]) not in players:
+                        players.append(int(curr_players[i]))
+                    i = i + 1
             curr_team = row.away_team_api_id
-        sum=0
+        sum = 0
         while i < len(players):
             birth_date = df_players[df_players['player_api_id'] == players[i]]['birthday'].item()
-            delta = datetime.datetime.now() - datetime.datetime(int(birth_date[0:4]), int(birth_date[5:7]), int(birth_date[8:10]))
-            sum=sum+(delta.days/365)
-            i=i+1
-        if len(players)>0:
-            average = sum/len(players)
-            new_row = {'team_id':int(curr_team), 'average_age': average}
-            avaragedf=avaragedf.append(new_row,ignore_index=True)
+            delta = datetime.datetime.now() - datetime.datetime(int(birth_date[0:4]), int(birth_date[5:7]),
+                                                                int(birth_date[8:10]))
+            sum = sum + (delta.days / 365)
+            i = i + 1
+        if len(players) > 0:
+            average = sum / len(players)
+            new_row = {'team_id': int(curr_team), 'average_age': average}
+            avaragedf = avaragedf.append(new_row, ignore_index=True)
     return avaragedf
 
-def add_values(df,df_avg_week,df_avg_age):
+
+def add_values(df, df_avg_week, df_avg_age):
     for row in df_avg_week.itertuples():
         df.loc[df['home_team_api_id'] == row.team_id, 'home_team_avg_game_week'] = row.average_game_per_week
         df.loc[df['away_team_api_id'] == row.team_id, 'away_team_avg_game_week'] = row.average_game_per_week
     for row in df_avg_age.itertuples():
         df.loc[df['home_team_api_id'] == row.team_id, 'home_team_avg_age'] = row.average_age
         df.loc[df['away_team_api_id'] == row.team_id, 'away_team_avg_age'] = row.average_age
-    return(df)
+    return (df)
+
 
 def create_class_5lastgames_between_teams(match_data, df, name):
     scores = [];
-    i=0
+    i = 0
     for x in df['match_id']:
         match_info = match_data.loc[match_data.match_api_id == x]
         matches_of_team = get_last_matches_against_eachother(match_data, match_info['date'].values[0],
@@ -264,7 +287,7 @@ def create_class_5lastgames_between_teams(match_data, df, name):
         scores.insert(i, score_number / 15)
         i = i + 1
         print(i)
-    df['five_last_meetings_for '+name] = scores
+    df['five_last_meetings_for ' + name] = scores
 
 
 path = "C:\\Users\\pc\\Desktop\\"  # Insert path here
@@ -297,30 +320,42 @@ rows = ["country_id", "league_id", "season", "stage", "date", "match_api_id", "h
         "away_player_7", "away_player_8", "away_player_9", "away_player_10", "away_player_11"]
 
 match_data.dropna(subset=rows, inplace=True)
-d_temp = {'match_api_id': match_data['match_api_id'].values}
-df = pd.DataFrame(data=d_temp)
+# d_temp = {'match_api_id': match_data['match_api_id'].values}
+# df = pd.DataFrame(data=d_temp)
+#
+# df.insert(1, "home_team_api_id", match_data['home_team_api_id'].values)
+# df.insert(2, "away_team_api_id", match_data['away_team_api_id'].values)
+# df.insert(3, "home_team_goal", match_data['home_team_goal'].values)
+# df.insert(4, "away_team_goal", match_data['away_team_goal'].values)
+#
+# # Creates target class Win/Defeat/Draw
+# get_match_label(df)
+#
+# # Adding features
+# create_class_column_5lastgames(match_data, df, 'away_team_api_id')
+# create_class_column_5lastgames(match_data, df, 'home_team_api_id')
+#
+# create_class_5lastgames_between_teams(match_data, df, 'away_team_api_id')
+# create_class_5lastgames_between_teams(match_data, df, 'home_team_api_id')
 
-df.insert(1, "home_team_api_id", match_data['home_team_api_id'].values)
-df.insert(2, "away_team_api_id", match_data['away_team_api_id'].values)
-df.insert(3, "home_team_goal", match_data['home_team_goal'].values)
-df.insert(4, "away_team_goal", match_data['away_team_goal'].values)
-
-# Creates target class Win/Defeat/Draw
-get_match_label(df)
-
-# Adding features
-create_class_column_5lastgames(match_data, df, 'away_team_api_id')
-create_class_column_5lastgames(match_data, df, 'home_team_api_id')
-
-create_class_5lastgames_between_teams(match_data, df, 'away_team_api_id')
-create_class_5lastgames_between_teams(match_data, df, 'home_team_api_id')
-
-#df.to_csv("final.csv", index=False)
+# df.to_csv("final.csv", index=False)
 
 df = pd.read_csv("final.csv")
-d_temp = {'5Last_Gamesaway_team_api_id': [], "5Last_Gameshome_team_api_id":[], "last_meetings_for away_team_api_id": [], "five_last_meetings_for home_team_api_id": [],
-          'avg_performane_of_main_home_players': [],'avg_performane_of_all_home_players': [],
-          'avg_performane_of_main_away_players': [],"avg_performane_of_all_away_players": [], "class": []}
+d_temp = {'5Last_Gamesaway_team_api_id': [],
+          "5Last_Gameshome_team_api_id": [],
+          "last_meetings_for_away_team_api_id": [],
+          "five_last_meetings_for_home_team_api_id": [],
+          'avg_performance_of_main_home_players': [],
+          'avg_performance_of_all_home_players': [],
+          'avg_performance_of_main_away_players': [],
+          "avg_performance_of_all_away_players": [],
+          'home_team_avg_game_week': [],
+          'away_team_avg_game_week': [],
+          'home_team_avg_age': [],
+          'away_team_avg_age': [],
+          'ave_goal_for_home_team': [],
+         'ave_goal_for_away_team': [],
+          "class": []}
 d_temp = {'match_id': match_data['match_api_id'].values}
 
 df_Trn = pd.DataFrame(data=d_temp)
@@ -329,69 +364,108 @@ print("Start")
 match_data2 = match_data[['match_api_id', 'season']]
 df = pd.merge(df, match_data2, how='left', on=['match_api_id'])
 
-
 train = df[~df.season.isin(['2015/2016'])]
 test = df[df.season.isin(['2015/2016'])]
 
-X_tr = train[['5Last_Gamesaway_team_api_id','5Last_Gameshome_team_api_id',
-               'five_last_meetings_for away_team_api_id',
-               'five_last_meetings_for home_team_api_id',
-               'avg_performane_of_main_home_players',
-               'avg_performane_of_all_home_players',
-               'avg_performane_of_main_away_players',
-               'avg_performane_of_all_away_players']]
+X_tr = train[[
+    '5Last_Gamesaway_team_api_id',
+              '5Last_Gameshome_team_api_id',
+              'five_last_meetings_for_away_team_api_id',
+            'five_last_meetings_for_home_team_api_id',
+            'avg_performance_of_main_home_players',
+             'avg_performance_of_all_home_players',
+           'avg_performance_of_main_away_players',
+              'avg_performance_of_all_away_players',
+             'home_team_avg_game_week',
+              'away_team_avg_game_week',
+              'home_team_avg_age',
+              'away_team_avg_age',
+    'ave_goal_for_home_team',
+    'ave_goal_for_away_team'
+              ]]
 y_tr = train[['class']]
 
-X_test = test[['5Last_Gamesaway_team_api_id','5Last_Gameshome_team_api_id',
-               'five_last_meetings_for away_team_api_id',
-               'five_last_meetings_for home_team_api_id',
-               'avg_performane_of_main_home_players',
-               'avg_performane_of_all_home_players',
-               'avg_performane_of_main_away_players',
-               'avg_performane_of_all_away_players']]
+X_test = test[[
+    '5Last_Gamesaway_team_api_id',
+    '5Last_Gameshome_team_api_id',
+                'five_last_meetings_for_away_team_api_id',
+             'five_last_meetings_for_home_team_api_id',
+            'avg_performance_of_main_home_players',
+    'avg_performance_of_all_home_players',
+            'avg_performance_of_main_away_players',
+    'avg_performance_of_all_away_players',
+           'home_team_avg_game_week',
+            'away_team_avg_game_week',
+    'home_team_avg_age',
+    'away_team_avg_age',
+     'ave_goal_for_home_team',
+     'ave_goal_for_away_team'
+
+              ]]
 y_test = test[['class']]
-# y_pred = SVM.predict(test_x)
-#
-# print(confusion_matrix(y_test, y_pred))
-# print(classification_report(y_test,y_pred))
-# print("----------------------------------------------------")
-# svclassifier = SVC(kernel='poly', degree=4)
-# # print("start")
-# # svclassifier.fit(X, y.values.ravel())
-# # print("end")
-# # y_pred = svclassifier.predict(test_x)
-# # print(confusion_matrix(y_test, y_pred))
-# # print(classification_report(y_test, y_pred))
-print("----------------------RF----------------------------")
-RF = RandomForestClassifier(n_estimators=100, max_depth=2, random_state=0)
+
+fig = plt.figure()
+
+
+values = []
+print(df.groupby('class')['match_api_id'].nunique())
+values.insert(0, 9810 / 21375)
+print(9810 / 21375)
+
+print("---------------------RandomForestClassifier----------------------------")
+RF = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=0)
 RF.fit(X_tr, y_tr.values.ravel())
+RF.predict(X_test)
 y_pred = RF.predict(X_test)
+values.insert(1, accuracy_score(y_pred, y_test))
 print(accuracy_score(y_pred, y_test))
 print(classification_report(y_test, y_pred))
-print("----------------------KNN----------------------------")
-KNN_model = KNeighborsClassifier(n_neighbors=3)
+
+plot_confusion_matrix(RF, X_test, y_test)
+
+print("----------------------KNeighborsClassifier----------------------------")
+KNN_model = KNeighborsClassifier(n_neighbors=1100)
 KNN_model.fit(X_tr, y_tr.values.ravel())
 KNN_prediction = KNN_model.predict(X_test)
+values.insert(2, accuracy_score(KNN_prediction, y_test))
 print(accuracy_score(KNN_prediction, y_test))
 print(classification_report(KNN_prediction, y_test))
 
-print("------------------LR--------------------------------")
-LR = LogisticRegression(random_state=0, solver='lbfgs', multi_class='multinomial').fit(X_tr, y_tr.values.ravel())
-LR.predict(X_test)
-print(accuracy_score(y_pred, y_test))
-print(classification_report(y_test, y_pred))
+plot_confusion_matrix(KNN_model, X_test, y_test)
 
-print("---------------------SVM----------------------------")
-SVM = svm.SVC(decision_function_shape="ovo").fit(X_tr, y_tr.values.ravel())
-SVM.predict(X_test)
+
+print("---------------------GaussianNB----------------------------")
+gnb = GaussianNB()
+y_pred = gnb.fit(X_tr, y_tr.values.ravel()).predict(X_test)
+values.insert(3, accuracy_score(y_pred, y_test))
 print(accuracy_score(y_pred, y_test))
 print(classification_report(y_test, y_pred))
-# print("---------------------RF----------------------------")
-# RF = RandomForestClassifier(n_estimators=1000, max_depth=10, random_state=0).fit(X_tr, y_tr.values.ravel())
-# RF.predict(X_test)
-# print(round(RF.score(X_test, y_test), 4))
-# print("--------------------NN------------------------------")
-# NN = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(150, 10), random_state=1, max_iter=10000).fit(X_tr, y_tr.values.ravel())
-# NN.predict(X_test)
-# round(NN.score(X_test, y_test), 4)
-# print("----------------------------------------------------")
+plot_confusion_matrix(gnb, X_test, y_test)
+
+print("---------------------LogisticRegression----------------------------")
+clf = LogisticRegression(random_state=5).fit(X_tr, y_tr.values.ravel())
+y_pred = clf.predict(X_test)
+values.insert(4, accuracy_score(y_pred, y_test))
+print(accuracy_score(y_pred, y_test))
+print(classification_report(y_test, y_pred))
+plot_confusion_matrix(clf, X_test, y_test)
+
+print("---------------------AdaBoostClassifier----------------------------")
+clf = AdaBoostClassifier(n_estimators=100, random_state=5)
+y_pred = clf.fit(X_tr, y_tr.values.ravel()).predict(X_test)
+values.insert(5, accuracy_score(y_pred, y_test))
+print(accuracy_score(y_pred, y_test))
+print(classification_report(y_test, y_pred))
+plot_confusion_matrix(clf, X_test, y_test )
+
+
+# Graphs
+
+names = ['Apriori','RFC', 'KNN', 'NB', 'LR','AdaBoostC']
+print(values)
+# plt.figure(figsize=(15, 5))
+
+plt.subplot(133)
+plt.plot(names, values)
+#plt.suptitle('Categorical Plotting')
+plt.show()
