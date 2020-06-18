@@ -537,4 +537,11 @@ fig7 = plt.figure(figsize=(6, 6))
 b = fig7.add_subplot(xlabel="home_team_avg_age", ylabel="away_team_avg_age")
 b.scatter(df['home_team_avg_age'], df['away_team_avg_age'], c=arr2)
 
+
+temp3 = pd.crosstab(X_test['five_last_meetings_for_home_team_api_id'], y_test['class'])
+temp3.plot(kind='bar', stacked=True, color=['red','blue','black'], grid=False)
+
+temp4 = pd.crosstab(df['ave_goal_for_home_team'], df['class'])
+temp4.plot(kind='bar', stacked=True, color=['red','blue','black'], grid=False)
+
 plt.show()
